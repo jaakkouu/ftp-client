@@ -22,8 +22,9 @@ class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        text = wx.StaticText(self, label="Local Directory", style=wx.ALIGN_CENTRE)
-        box.Add(text, 0, wx.EXPAND | wx.ALL, 15)
+        sp = wx.StandardPaths.Get()
+        dirs = wx.GenericDirCtrl(self, wx.ID_ANY, sp.GetDocumentsDir(), wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
+        box.Add(dirs, 1, wx.EXPAND)
         self.SetSizer(box);
         self.SetBackgroundColour('#FF4136') #red
 
@@ -31,8 +32,8 @@ class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        text = wx.StaticText(self, label="Remote Directory", style=wx.ALIGN_CENTRE)
-        box.Add(text, 0, wx.EXPAND | wx.ALL, 15)
+        dirs = wx.GenericDirCtrl(self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
+        box.Add(dirs, 1, wx.EXPAND)
         self.SetSizer(box);
         self.SetBackgroundColour('#85144b') #maroon
         
@@ -43,7 +44,7 @@ class MainFrame(wx.Frame):
 
     def CreateUI(self):
         panel = wx.Panel(self)
-        panel.SetBackgroundColour('#ffffff')
+        panel.SetBackgroundColou    r('#ffffff')
 
         rows = wx.BoxSizer(wx.VERTICAL)
         rows.Add(ToolbarPanel(panel), 0, wx.EXPAND)
