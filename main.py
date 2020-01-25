@@ -1,4 +1,23 @@
+from ftplib import FTP
 import wx
+
+def getFTPUrl():
+    f = open('creds.txt', 'r')
+    content = f.read().split(":")
+    f.close()
+    return content[0]
+
+def getFTPUser():
+    f = open('creds.txt', 'r')
+    content = f.read().split(":")
+    f.close()
+    return content[1]
+
+def getFTPPass():
+    f = open('creds.txt', 'r')
+    content = f.read().split(":")
+    f.close()
+    return content[2]
 
 class ToolbarPanel(wx.Panel):
     def __init__(self, parent):
@@ -25,8 +44,7 @@ class LocalDirPanel(wx.Panel):
         sp = wx.StandardPaths.Get()
         dirs = wx.GenericDirCtrl(self, wx.ID_ANY, sp.GetDocumentsDir(), wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
         box.Add(dirs, 1, wx.EXPAND)
-        self.SetSizer(box);
-        self.SetBackgroundColour('#FF4136') #red
+        self.SetSizer(box)
 
 class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
@@ -34,8 +52,7 @@ class RemoteDirPanel(wx.Panel):
         box = wx.BoxSizer(wx.VERTICAL)
         dirs = wx.GenericDirCtrl(self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
         box.Add(dirs, 1, wx.EXPAND)
-        self.SetSizer(box);
-        self.SetBackgroundColour('#85144b') #maroon
+        self.SetSizer(box)
         
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
@@ -44,7 +61,7 @@ class MainFrame(wx.Frame):
 
     def CreateUI(self):
         panel = wx.Panel(self)
-        panel.SetBackgroundColou    r('#ffffff')
+        panel.SetBackgroundColour('#ffffff')
 
         rows = wx.BoxSizer(wx.VERTICAL)
         rows.Add(ToolbarPanel(panel), 0, wx.EXPAND)
@@ -55,10 +72,8 @@ class MainFrame(wx.Frame):
         rows.Add(dirs, 1, wx.EXPAND)
         panel.SetSizer(rows)
         
-
 if __name__ == '__main__':
     app = wx.App(False)
     frame = MainFrame(None, title='FTP Client')
     frame.Show()
     app.MainLoop()
-
