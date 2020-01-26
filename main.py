@@ -23,10 +23,22 @@ class ToolbarPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.HORIZONTAL)
-        text = wx.StaticText(self, label="Toolbar", style=wx.ALIGN_CENTRE)
-        box.Add(text, 0, wx.EXPAND | wx.ALL, 15)
-        self.SetSizer(box);
-        self.SetBackgroundColour('#0074D9') #blue
+        connectFtpBtn = wx.Button(self, -1, "Connect")
+        ftpUserText = wx.StaticText(self, -1, "User:")
+        ftpPassText = wx.StaticText(self, -1, "Pass:")
+        ftpUrlText = wx.StaticText(self, -1, "Url:")
+        ftpUserCtrl = wx.TextCtrl(self, -1) 
+        ftpPassCtrl = wx.TextCtrl(self, -1)
+        ftpUrlCtrl = wx.TextCtrl(self, -1)
+        box.Add(ftpUserText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        box.Add(ftpUserCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(ftpPassText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        box.Add(ftpPassCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(ftpUrlText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
+        box.Add(ftpUrlCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(connectFtpBtn, 0, wx.EXPAND | wx.ALL, 5)
+        self.SetSizer(box)
+        self.SetBackgroundColour('#ececec') #blue
 
 class ConsolePanel(wx.Panel):
     def __init__(self, parent):
@@ -34,8 +46,7 @@ class ConsolePanel(wx.Panel):
         box = wx.BoxSizer(wx.VERTICAL)
         text = wx.StaticText(self, label="Console", style=wx.ALIGN_LEFT)
         box.Add(text, 0, wx.EXPAND | wx.ALL, 15)
-        self.SetSizer(box);
-        self.SetBackgroundColour('#01FF70') #lime
+        self.SetSizer(box)
 
 class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
