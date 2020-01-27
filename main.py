@@ -1,44 +1,38 @@
 from ftplib import FTP
 import wx
 
-def getFTPUrl():
-    f = open('creds.txt', 'r')
-    content = f.read().split(":")
-    f.close()
-    return content[0]
-
-def getFTPUser():
-    f = open('creds.txt', 'r')
-    content = f.read().split(":")
-    f.close()
-    return content[1]
-
-def getFTPPass():
-    f = open('creds.txt', 'r')
-    content = f.read().split(":")
-    f.close()
-    return content[2]
+def Connect(url, user, passwd):
+    ftp = FTP(url)
+    ftp.login(user, passwd)
+    wx.MessageBox(ftp.getwelcome())
 
 class ToolbarPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.HORIZONTAL)
-        connectFtpBtn = wx.Button(self, -1, "Connect")
         ftpUserText = wx.StaticText(self, -1, "User:")
         ftpPassText = wx.StaticText(self, -1, "Pass:")
         ftpUrlText = wx.StaticText(self, -1, "Url:")
-        ftpUserCtrl = wx.TextCtrl(self, -1) 
-        ftpPassCtrl = wx.TextCtrl(self, -1)
-        ftpUrlCtrl = wx.TextCtrl(self, -1)
+        self.ftpUserCtrl = wx.TextCtrl(self, -1) 
+        self.ftpPassCtrl = wx.TextCtrl(self, -1, style=wx.TE_PASSWORD)
+        self.ftpUrlCtrl = wx.TextCtrl(self, -1)
+        connectFtpBtn = wx.Button(self, -1, "Connect")
+        connectFtpBtn.Bind(wx.EVT_BUTTON, self.OnConnectFtpBtnClick)
         box.Add(ftpUserText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
-        box.Add(ftpUserCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(self.ftpUserCtrl, 0, wx.EXPAND | wx.ALL, 5)
         box.Add(ftpPassText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
-        box.Add(ftpPassCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(self.ftpPassCtrl, 0, wx.EXPAND | wx.ALL, 5)
         box.Add(ftpUrlText, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
-        box.Add(ftpUrlCtrl, 0, wx.EXPAND | wx.ALL, 5)
+        box.Add(self.ftpUrlCtrl, 0, wx.EXPAND | wx.ALL, 5)
         box.Add(connectFtpBtn, 0, wx.EXPAND | wx.ALL, 5)
         self.SetSizer(box)
-        self.SetBackgroundColour('#ececec') #blue
+        self.SetBackgroundColour('#ececec')
+    
+    def OnConnectFtpBtnClick(self, e):
+        username = self.ftpUserCtrl.GetValue()
+        password = self.ftpPassCtrl.GetValue()
+        url = self.ftpUrlCtrl.GetValue()
+        Connect(url, username, password)
 
 class ConsolePanel(wx.Panel):
     def __init__(self, parent):
@@ -67,13 +61,12 @@ class RemoteDirPanel(wx.Panel):
         
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
-        super(MainFrame, self).__init__(parent, title=title)
+        super(MainFrame, self).__init__(parent, title=title, size=wx.Size(900, 500))
         self.CreateUI()
 
     def CreateUI(self):
         panel = wx.Panel(self)
         panel.SetBackgroundColour('#ffffff')
-
         rows = wx.BoxSizer(wx.VERTICAL)
         rows.Add(ToolbarPanel(panel), 0, wx.EXPAND)
         rows.Add(ConsolePanel(panel), 0, wx.EXPAND)
