@@ -2,3 +2,6 @@ concept.png
 snapshots/*
 test.py
 creds.txt
+.vscode
+.vscode/
+_pycache_/
