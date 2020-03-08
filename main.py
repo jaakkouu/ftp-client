@@ -1,25 +1,16 @@
-from ftplib import FTP
-import wx
-import wx.lib.inspection
-
-global ftp
-
-def Connect(self, url, user, passwd):
-    global ftp
-    ftp = FTP(url)
-    ftp.login(user, passwd)
-    wx.MessageBox(ftp.getwelcome(), "Connection Success", wx.ICON_INFORMATION)
-    self.connectFtpBtn.Hide()
-    self.abortConnBtn.Show()
-    self.Layout()
+import sys 
+import os
+import ftplib   
+import wx   
+from wx import dataview
 
 class ToolbarPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.HORIZONTAL)
-        ftpUserText = wx.StaticText(self, -1, "User :")
-        ftpPassText = wx.StaticText(self, -1, "Pass :")
-        ftpUrlText = wx.StaticText(self, -1, "Url :")
+        ftpUserText = wx.StaticText(self, -1, "User: ")
+        ftpPassText = wx.StaticText(self, -1, "Pass: ")
+        ftpUrlText = wx.StaticText(self, -1, "Url: ")
         self.ftpUserCtrl = wx.TextCtrl(self, -1) 
         self.ftpPassCtrl = wx.TextCtrl(self, -1, style=wx.TE_PASSWORD)
         self.ftpUrlCtrl = wx.TextCtrl(self, -1)
@@ -40,24 +31,24 @@ class ToolbarPanel(wx.Panel):
         self.SetBackgroundColour('#ececec')
     
     def OnConnectFtpBtnClick(self, e):
-        username = self.ftpUserCtrl.GetValue()
-        password = self.ftpPassCtrl.GetValue()
+        user = self.ftpUserCtrl.GetValue()
+        passwd = self.ftpPassCtrl.GetValue()
         url = self.ftpUrlCtrl.GetValue()
-        if len(username) == 0:
+        if len(user) == 0:
             wx.MessageBox("Please provide username", "Connection Error", wx.ICON_ERROR)
-        elif len(password) == 0:
+        elif len(passwd) == 0:
             wx.MessageBox("Please provide password", "Connection Error", wx.ICON_ERROR)
         elif len(url) == 0:
             wx.MessageBox("Please provide url", "Connection Error", wx.ICON_ERROR)
         else:
-            Connect(self, url, username, password)
+            self.TopLevelParent.ConnectFtp(self, url, user, passwd)
     
     def OnAbortConnBtnClick(self, e):
-        global ftp
-        ftp.quit()
+        self.TopLevelParent.ftp.quit()
         wx.MessageBox("Connection has been closed successfully!", "Connection Closed", wx.ICON_INFORMATION)
         self.connectFtpBtn.Show()
         self.abortConnBtn.Hide()
+        self.TopLevelParent.remoteDirPanel.clearView()
         self.Layout()
 
 class ConsolePanel(wx.Panel):
@@ -72,19 +63,56 @@ class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        sp = wx.StandardPaths.Get()
-        dirs = wx.GenericDirCtrl(self, wx.ID_ANY, sp.GetDocumentsDir(), wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
-        box.Add(dirs, 1, wx.EXPAND)
+        self.files = self.getListOfItemsInDirectory(self)
+        self.localDirs = wx.dataview.DataViewListCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.DV_HORIZ_RULES)
+        self.localDirs.AppendTextColumn('Filename')
+        self.localDirs.AppendTextColumn('Type') 
+        self.localDirs.AppendTextColumn('Size') 
+        self.updateDirectory(self)
+        box.Add(self.localDirs, 1, wx.EXPAND)
         self.SetSizer(box)
+
+    def getListOfItemsInDirectory(self, event=None):
+        items = []
+        sp = wx.StandardPaths.Get()
+        documentsDir = sp.GetDocumentsDir()
+        for entry in os.listdir(documentsDir):
+            if os.path.isfile(os.path.join(documentsDir, entry)): 
+                itemType = "Folder" 
+            else:
+                itemType = "File"
+            items.append((entry, itemType, "?"))
+        return items
+
+    def updateDirectory(self, event=None):
+        files = self.files
+        for f in files:
+            self.localDirs.AppendItem(f)
+        
 
 class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        dirs = wx.GenericDirCtrl(self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.Size(-1, -1), wx.DIRCTRL_3D_INTERNAL | wx.SUNKEN_BORDER, wx.EmptyString, 0)
-        box.Add(dirs, 1, wx.EXPAND)
+        self.remoteDirs = wx.dataview.DataViewListCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.DV_HORIZ_RULES)
+        self.remoteDirs.AppendTextColumn('Filename')
+        self.remoteDirs.AppendTextColumn('Type') 
+        self.remoteDirs.AppendTextColumn('Size') 
+        box.Add(self.remoteDirs, 1, wx.EXPAND)
         self.SetSizer(box)
-        
+
+    def updateDirectory(self, event=None):
+        files = []
+        line = self.TopLevelParent.ftp.retrlines("NLST", files.append)
+        files.pop(0) # Remove first item "."
+        files.pop(0) # Remove first item again ".."
+        for f in files:
+            item = (f, "Folder", "?")
+            self.remoteDirs.AppendItem(item)
+
+    def clearView(self, event=None):
+        self.remoteDirs.DeleteAllItems()
+
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
         super(MainFrame, self).__init__(parent, title=title, size=wx.Size(900, 500))
@@ -95,17 +123,35 @@ class MainFrame(wx.Frame):
         panel = wx.Panel(self)
         panel.SetBackgroundColour('#ffffff')
         rows = wx.BoxSizer(wx.VERTICAL)
-        rows.Add(ToolbarPanel(panel), 0, wx.EXPAND)
-        rows.Add(ConsolePanel(panel), 0, wx.EXPAND)
         dirs = wx.BoxSizer(wx.HORIZONTAL)
-        dirs.Add(LocalDirPanel(panel), 1, wx.EXPAND)
-        dirs.Add(RemoteDirPanel(panel), 1, wx.EXPAND) 
+        self.toolbarPanel = ToolbarPanel(panel)
+        self.consolePanel = ConsolePanel(panel)
+        self.localDirPanel = LocalDirPanel(panel)
+        self.remoteDirPanel = RemoteDirPanel(panel)
+        rows.Add(self.toolbarPanel, 0, wx.EXPAND)
+        rows.Add(self.consolePanel, 0, wx.EXPAND)
+        dirs.Add(self.localDirPanel, 1, wx.EXPAND)
+        dirs.Add(self.remoteDirPanel, 1, wx.EXPAND) 
         rows.Add(dirs, 1, wx.EXPAND)
         panel.SetSizer(rows)
-        
+
+    def ConnectFtp(self, toolbarPanel, url, user, passwd, event=None):
+        self.ftp = ftplib.FTP(url)
+        try:
+            self.ftp.login(user, passwd)
+            wx.MessageBox(self.ftp.getwelcome(), "Connection Success", wx.ICON_INFORMATION)
+            self.remoteDirPanel.updateDirectory(self)
+            toolbarPanel.connectFtpBtn.Hide()
+            toolbarPanel.abortConnBtn.Show()
+            toolbarPanel.Layout()
+        except ftplib.all_errors as e:
+            error = str(e).split(None, 1)[0]
+            wx.MessageBox(error, "Connection Error", wx.ICON_EXCLAMATION)
+     
 if __name__ == '__main__':
     app = wx.App(False)
-    wx.lib.inspection.InspectionTool().Show()
     frame = MainFrame(None, title='FTP Client')
     frame.Show()
     app.MainLoop()
+
+    
