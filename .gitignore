@@ -1,7 +1,4 @@
-concept.png
 snapshots/*
-test.py
-creds.txt
-.vscode
+myvars.py
 .vscode/
-_pycache_/
+__pycache__/

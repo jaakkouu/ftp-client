@@ -1,7 +1,9 @@
-import sys 
+import sys
 import os
-import ftplib   
-import wx   
+import ftplib
+from myvars import *
+from dateutil import parser
+import wx
 from wx import dataview
 
 class ToolbarPanel(wx.Panel):
@@ -11,9 +13,18 @@ class ToolbarPanel(wx.Panel):
         ftpUserText = wx.StaticText(self, -1, "User: ")
         ftpPassText = wx.StaticText(self, -1, "Pass: ")
         ftpUrlText = wx.StaticText(self, -1, "Url: ")
-        self.ftpUserCtrl = wx.TextCtrl(self, -1) 
-        self.ftpPassCtrl = wx.TextCtrl(self, -1, style=wx.TE_PASSWORD)
-        self.ftpUrlCtrl = wx.TextCtrl(self, -1)
+        if 'g_user' in globals():
+            self.ftpUserCtrl = wx.TextCtrl(self, -1, value=g_user) 
+        else:
+            self.ftpUserCtrl = wx.TextCtrl(self, -1) 
+        if 'g_pass' in globals():
+            self.ftpPassCtrl = wx.TextCtrl(self, -1, value=g_pass, style=wx.TE_PASSWORD) 
+        else:
+            self.ftpPassCtrl = wx.TextCtrl(self, -1, style=wx.TE_PASSWORD) 
+        if 'g_url' in globals():
+            self.ftpUrlCtrl = wx.TextCtrl(self, -1, value=g_url) 
+        else:
+            self.ftpUrlCtrl = wx.TextCtrl(self, -1) 
         self.connectFtpBtn = wx.Button(self, -1, "Connect")
         self.abortConnBtn = wx.Button(self, -1, "Abort Connection")
         self.abortConnBtn.Hide()
@@ -64,7 +75,7 @@ class LocalDirPanel(wx.Panel):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
         self.files = self.getListOfItemsInDirectory(self)
-        self.localDirs = wx.dataview.DataViewListCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.DV_HORIZ_RULES)
+        self.localDirs = wx.dataview.DataViewListCtrl(self)
         self.localDirs.AppendTextColumn('Filename')
         self.localDirs.AppendTextColumn('Type') 
         self.localDirs.AppendTextColumn('Size') 
@@ -89,26 +100,60 @@ class LocalDirPanel(wx.Panel):
         for f in files:
             self.localDirs.AppendItem(f)
         
-
 class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        self.remoteDirs = wx.dataview.DataViewListCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, wx.dataview.DV_HORIZ_RULES)
-        self.remoteDirs.AppendTextColumn('Filename')
-        self.remoteDirs.AppendTextColumn('Type') 
-        self.remoteDirs.AppendTextColumn('Size') 
+        self.remoteDirs = wx.dataview.DataViewListCtrl(self)
+        self.remoteDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
+        self.remoteDirs.AppendTextColumn('File')
+        self.remoteDirs.AppendTextColumn('Filesize')
+        self.remoteDirs.AppendTextColumn('Filetype')
+        self.remoteDirs.AppendTextColumn('Last modified')
+        self.remoteDirs.AppendTextColumn('Permissions')
+        self.remoteDirs.AppendTextColumn('Owner/Group')
         box.Add(self.remoteDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
-    def updateDirectory(self, event=None):
+    def onItemClick(self, event):
+        selectedRowIndex = self.remoteDirs.GetSelectedRow()
+        selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
+        fileName = self.remoteDirs.GetValue(selectedRowIndex, 0)
+        fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
+        if fileType == "file":
+            wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
+        else:
+            self.TopLevelParent.ftp.cwd('/' + fileName)
+            self.updateDirectory(self)
+
+    def parseDirectoryIntoArray(self, lines, event=None):
         files = []
-        line = self.TopLevelParent.ftp.retrlines("NLST", files.append)
-        files.pop(0) # Remove first item "."
-        files.pop(0) # Remove first item again ".."
-        for f in files:
-            item = (f, "Folder", "?")
-            self.remoteDirs.AppendItem(item)
+        for line in lines:
+            row = line.split(";")
+            item = {}
+            index = 0
+            for column in row:
+                columnRow = column.split("=")
+                if(index != 7):
+                    item[columnRow[0]] = columnRow[1]
+                else: # last item in array is the name
+                    item["name"] = columnRow[0].strip()
+                index += 1
+            files.append(item)
+        return files
+
+    def updateDirectory(self, event=None):
+        self.clearView()
+        lines = []
+        self.TopLevelParent.ftp.retrlines('MLSD', lines.append)
+        lines.pop(0) # remove the first item "."
+        items = self.parseDirectoryIntoArray(lines)
+        for item in items:
+            if item['type'] == 'file': 
+                x = getFileItem(item)
+            else: 
+                x = getFolderItem(item)
+            self.remoteDirs.AppendItem(x)
 
     def clearView(self, event=None):
         self.remoteDirs.DeleteAllItems()
@@ -147,7 +192,31 @@ class MainFrame(wx.Frame):
         except ftplib.all_errors as e:
             error = str(e).split(None, 1)[0]
             wx.MessageBox(error, "Connection Error", wx.ICON_EXCLAMATION)
-     
+
+
+
+def getFileItem(item):
+    lastModified = str(parser.parse(item['modify']))
+    return (
+        item['name'],
+        item['size'],
+        item['type'],
+        lastModified,
+        item['UNIX.mode'],
+        item['UNIX.uid'] + " " + item['UNIX.gid']
+    )
+
+def getFolderItem(item):
+    lastModified = str(parser.parse(item['modify']))
+    return (
+        item['name'],
+        item['sizd'],
+        item['type'],
+        lastModified,
+        item['UNIX.mode'],
+        item['UNIX.uid'] + " " + item['UNIX.gid']
+    )
+
 if __name__ == '__main__':
     app = wx.App(False)
     frame = MainFrame(None, title='FTP Client')
