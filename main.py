@@ -120,10 +120,11 @@ class RemoteDirPanel(wx.Panel):
         selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
         fileName = self.remoteDirs.GetValue(selectedRowIndex, 0)
         fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
+        currentPath = self.TopLevelParent.ftp.pwd() + "/"
         if fileType == "file":
             wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
         else:
-            self.TopLevelParent.ftp.cwd('/' + fileName)
+            self.TopLevelParent.ftp.cwd(currentPath + fileName)
             self.updateDirectory(self)
 
     def parseDirectoryIntoArray(self, lines, event=None):
@@ -193,8 +194,6 @@ class MainFrame(wx.Frame):
             error = str(e).split(None, 1)[0]
             wx.MessageBox(error, "Connection Error", wx.ICON_EXCLAMATION)
 
-
-
 def getFileItem(item):
     lastModified = str(parser.parse(item['modify']))
     return (
@@ -222,5 +221,3 @@ if __name__ == '__main__':
     frame = MainFrame(None, title='FTP Client')
     frame.Show()
     app.MainLoop()
-
-    
