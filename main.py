@@ -64,6 +64,7 @@ class ToolbarPanel(wx.Panel):
         self.Layout()
 
 class ConsolePanel(wx.Panel):
+    # TODO Implement way to log into console easily
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
@@ -81,15 +82,13 @@ class LocalDirPanel(wx.Panel):
         self.localDirs.AppendTextColumn('Filesize')
         self.localDirs.AppendTextColumn('Filetype')
         self.localDirs.AppendTextColumn('Last modified')
-        sp = wx.StandardPaths.Get()
-        documentsDir = sp.GetDocumentsDir()
-        self.currentPath = documentsDir 
-        itemsInDir = self.getItemsFromDir(self.currentPath)
+        itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
         self.updateDirectory(itemsInDir)
         box.Add(self.localDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
     def getItemsFromDir(self, dirPath, event=None):
+        # TODO Add file and folder validation
         items = []
         for entry in os.listdir(dirPath):
             entryPath = os.path.join(dirPath, entry)
@@ -103,23 +102,25 @@ class LocalDirPanel(wx.Panel):
         return items
 
     def onItemClick(self, event):
+        # TODO Add file and folder validation
         selectedRowIndex = self.localDirs.GetSelectedRow()
         selectedItem = self.localDirs.RowToItem(selectedRowIndex)
         fileName = self.localDirs.GetValue(selectedRowIndex, 0)
         fileType = self.localDirs.GetValue(selectedRowIndex, 2)
+        localDirPath = self.localDirs.TopLevelParent.localDirPath
         if fileType == "file":
-            print(self.currentPath + "\\" + fileName)
-            wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
+            wx.MessageBox(fileName, "Uploading file", wx.ICON_INFORMATION)
         else:
             if fileName == "..":
-                currentPathList = self.currentPath.split("\\")
+                currentPathList = localDirPath.split("\\")
                 del currentPathList[-1]
                 separator = "\\"
-                self.currentPath = separator.join(currentPathList)
+                currentPath = separator.join(currentPathList)
             else:
-                self.currentPath = self.currentPath + "\\" + fileName
+                currentPath = localDirPath + "\\" + fileName
 
-            itemsInDir = self.getItemsFromDir(self.currentPath)
+            self.localDirs.TopLevelParent.SetLocalDirPath(currentPath)
+            itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
             self.updateDirectory(itemsInDir)
 
     def updateDirectory(self, items, event=None):
@@ -147,14 +148,14 @@ class RemoteDirPanel(wx.Panel):
         self.SetSizer(box)
 
     def onItemClick(self, event):
+        # TODO Add file and folder validation
         selectedRowIndex = self.remoteDirs.GetSelectedRow()
         selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
         fileName = self.remoteDirs.GetValue(selectedRowIndex, 0)
         fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
         currentPath = self.TopLevelParent.ftp.pwd() + "/"
         if fileType == "file":
-            wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
-            currentPath = "C:\\Users\\Jaakko Uusitalo\\Documents" + "\\" + fileName
+            currentPath = self.remoteDirs.TopLevelParent.localDirPath + "\\" + fileName
             pathToSave = open(currentPath, 'wb')
             self.TopLevelParent.ftp.retrbinary('RETR %s' % fileName, pathToSave.write)
         else:
@@ -194,10 +195,19 @@ class RemoteDirPanel(wx.Panel):
         self.remoteDirs.DeleteAllItems()
 
 class MainFrame(wx.Frame):
+    # TODO Add status bar for frame to show connectivity information
+    # TODO Add settings menu
+
     def __init__(self, parent, title):
         super(MainFrame, self).__init__(parent, title=title, size=wx.Size(1000, 500))
+        sp = wx.StandardPaths.Get()
         self.ftp = None
+        # TODO Add ability to change and save starting folder for later use
+        self.SetLocalDirPath(sp.GetDocumentsDir())
         self.CreateUI()
+
+    def SetLocalDirPath(self, path):
+        self.localDirPath = path
 
     def CreateUI(self):
         panel = wx.Panel(self)
@@ -251,6 +261,7 @@ def getFolderItem(item):
     )
 
 if __name__ == '__main__':
+    # TODO Add visuals
     app = wx.App(False)
     frame = MainFrame(None, title='FTP Client')
     frame.Show()
