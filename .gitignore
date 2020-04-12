@@ -1,4 +1,5 @@
 snapshots/*
 myvars.py
+test.py
 .vscode/
 __pycache__/

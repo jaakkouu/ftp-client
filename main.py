@@ -1,6 +1,7 @@
 import sys
 import os
 import ftplib
+import time
 from myvars import *
 from dateutil import parser
 import wx
@@ -74,31 +75,61 @@ class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        self.files = self.getListOfItemsInDirectory(self)
         self.localDirs = wx.dataview.DataViewListCtrl(self)
-        self.localDirs.AppendTextColumn('Filename')
-        self.localDirs.AppendTextColumn('Type') 
-        self.localDirs.AppendTextColumn('Size') 
-        self.updateDirectory(self)
+        self.localDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
+        self.localDirs.AppendTextColumn('File')
+        self.localDirs.AppendTextColumn('Filesize')
+        self.localDirs.AppendTextColumn('Filetype')
+        self.localDirs.AppendTextColumn('Last modified')
+        sp = wx.StandardPaths.Get()
+        documentsDir = sp.GetDocumentsDir()
+        self.currentPath = documentsDir 
+        itemsInDir = self.getItemsFromDir(self.currentPath)
+        self.updateDirectory(itemsInDir)
         box.Add(self.localDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
-    def getListOfItemsInDirectory(self, event=None):
+    def getItemsFromDir(self, dirPath, event=None):
         items = []
-        sp = wx.StandardPaths.Get()
-        documentsDir = sp.GetDocumentsDir()
-        for entry in os.listdir(documentsDir):
-            if os.path.isfile(os.path.join(documentsDir, entry)): 
-                itemType = "Folder" 
-            else:
-                itemType = "File"
-            items.append((entry, itemType, "?"))
+        for entry in os.listdir(dirPath):
+            entryPath = os.path.join(dirPath, entry)
+            if os.path.isdir(entryPath):
+                iType = "File folder"
+            elif os.path.isfile(entryPath):
+                iType = "file"
+            lastModified = time.strftime('%d-%m-%Y %H:%M:%S', time.gmtime(os.path.getmtime(entryPath)))
+            iSize = os.path.getsize(entryPath)
+            items.append((entry, iSize, iType, lastModified))
         return items
 
-    def updateDirectory(self, event=None):
-        files = self.files
-        for f in files:
-            self.localDirs.AppendItem(f)
+    def onItemClick(self, event):
+        selectedRowIndex = self.localDirs.GetSelectedRow()
+        selectedItem = self.localDirs.RowToItem(selectedRowIndex)
+        fileName = self.localDirs.GetValue(selectedRowIndex, 0)
+        fileType = self.localDirs.GetValue(selectedRowIndex, 2)
+        if fileType == "file":
+            print(self.currentPath + "\\" + fileName)
+            wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
+        else:
+            if fileName == "..":
+                currentPathList = self.currentPath.split("\\")
+                del currentPathList[-1]
+                separator = "\\"
+                self.currentPath = separator.join(currentPathList)
+            else:
+                self.currentPath = self.currentPath + "\\" + fileName
+                
+            itemsInDir = self.getItemsFromDir(self.currentPath)
+            self.updateDirectory(itemsInDir)
+
+    def updateDirectory(self, items, event=None):
+        self.clearView()
+        self.localDirs.AppendItem(("..", "", "", ""))
+        for item in items:
+            self.localDirs.AppendItem(item)
+    
+    def clearView(self, event=None):
+        self.localDirs.DeleteAllItems()
         
 class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
@@ -161,7 +192,7 @@ class RemoteDirPanel(wx.Panel):
 
 class MainFrame(wx.Frame):
     def __init__(self, parent, title):
-        super(MainFrame, self).__init__(parent, title=title, size=wx.Size(900, 500))
+        super(MainFrame, self).__init__(parent, title=title, size=wx.Size(1000, 500))
         self.ftp = None
         self.CreateUI()
 
