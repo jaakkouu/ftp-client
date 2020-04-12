@@ -118,7 +118,7 @@ class LocalDirPanel(wx.Panel):
                 self.currentPath = separator.join(currentPathList)
             else:
                 self.currentPath = self.currentPath + "\\" + fileName
-                
+
             itemsInDir = self.getItemsFromDir(self.currentPath)
             self.updateDirectory(itemsInDir)
 
@@ -154,6 +154,9 @@ class RemoteDirPanel(wx.Panel):
         currentPath = self.TopLevelParent.ftp.pwd() + "/"
         if fileType == "file":
             wx.MessageBox(fileName, "Download file", wx.ICON_INFORMATION)
+            currentPath = "C:\\Users\\Jaakko Uusitalo\\Documents" + "\\" + fileName
+            pathToSave = open(currentPath, 'wb')
+            self.TopLevelParent.ftp.retrbinary('RETR %s' % fileName, pathToSave.write)
         else:
             self.TopLevelParent.ftp.cwd(currentPath + fileName)
             self.updateDirectory(self)
