@@ -64,7 +64,6 @@ class ToolbarPanel(wx.Panel):
         self.Layout()
 
 class ConsolePanel(wx.Panel):
-    # TODO Implement way to log into console easily
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
@@ -112,10 +111,15 @@ class LocalDirPanel(wx.Panel):
         selectedRowIndex = self.localDirs.GetSelectedRow()
         selectedItem = self.localDirs.RowToItem(selectedRowIndex)
         fileName = self.localDirs.GetValue(selectedRowIndex, 0)
+        fileSize = self.localDirs.GetValue(selectedRowIndex, 1)
         fileType = self.localDirs.GetValue(selectedRowIndex, 2)
         localDirPath = self.localDirs.TopLevelParent.localDirPath
+        remoteDirPath = self.localDirs.TopLevelParent.remoteDirPath
         if fileType == "file":
-            wx.MessageBox(fileName, "Uploading file", wx.ICON_INFORMATION)
+            self.TopLevelParent.consolePanel.LogMessage('Starting upload of ' + fileName)
+            fileToSave = open(localDirPath + "\\" + fileName, 'rb')
+            self.TopLevelParent.ftp.storbinary('STOR %s' % fileName, fileToSave)
+            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + fileSize + ' bytes')
         else:
             if fileName == "..":
                 currentPathList = localDirPath.split("\\")
@@ -220,6 +224,9 @@ class MainFrame(wx.Frame):
     def SetLocalDirPath(self, path):
         self.localDirPath = path
 
+    def SetRemoteDirPath(self, path):
+        self.remoteDirPath = path
+
     def CreateUI(self):
         panel = wx.Panel(self)
         panel.SetBackgroundColour('#ffffff')
@@ -243,6 +250,7 @@ class MainFrame(wx.Frame):
             self.ftp.login(user, passwd)
             self.TopLevelParent.consolePanel.LogMessage("Connection success!")
             self.TopLevelParent.consolePanel.LogMessage(self.ftp.getwelcome())
+            self.TopLevelParent.SetRemoteDirPath(self.ftp.pwd())
             self.remoteDirPanel.updateDirectory(self)
             toolbarPanel.connectFtpBtn.Hide()
             toolbarPanel.abortConnBtn.Show()
