@@ -57,7 +57,7 @@ class ToolbarPanel(wx.Panel):
     
     def OnAbortConnBtnClick(self, e):
         self.TopLevelParent.ftp.quit()
-        wx.MessageBox("Connection has been closed successfully!", "Connection Closed", wx.ICON_INFORMATION)
+        self.TopLevelParent.consolePanel.LogMessage("Connection has been closed successfully!")
         self.connectFtpBtn.Show()
         self.abortConnBtn.Hide()
         self.TopLevelParent.remoteDirPanel.clearView()
@@ -68,9 +68,15 @@ class ConsolePanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
-        text = wx.StaticText(self, label="Console", style=wx.ALIGN_LEFT)
-        box.Add(text, 0, wx.EXPAND | wx.ALL, 15)
+        self.logBox = wx.TextCtrl(self, wx.ID_ANY, size=(0,100), style=wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+        box.Add(self.logBox, 0, wx.EXPAND|wx.ALL)
         self.SetSizer(box)
+        
+    def LogMessage(self, message):
+        self.logBox.AppendText(message + "\n")
+
+    def ClearMessage(self):
+        self.logBox.Clear()
 
 class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
@@ -152,15 +158,20 @@ class RemoteDirPanel(wx.Panel):
         selectedRowIndex = self.remoteDirs.GetSelectedRow()
         selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
         fileName = self.remoteDirs.GetValue(selectedRowIndex, 0)
+        fileSize = self.remoteDirs.GetValue(selectedRowIndex, 1)
         fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
         currentPath = self.TopLevelParent.ftp.pwd() + "/"
         if fileType == "file":
             currentPath = self.remoteDirs.TopLevelParent.localDirPath + "\\" + fileName
             pathToSave = open(currentPath, 'wb')
+            self.TopLevelParent.consolePanel.LogMessage('Starting download of ' + fileName)
             self.TopLevelParent.ftp.retrbinary('RETR %s' % fileName, pathToSave.write)
+            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + fileSize + ' bytes')
         else:
             self.TopLevelParent.ftp.cwd(currentPath + fileName)
+            self.TopLevelParent.consolePanel.LogMessage('Retrieving directory listing of "/' + fileName + '"...')
             self.updateDirectory(self)
+            self.TopLevelParent.consolePanel.LogMessage('Directory listing of "/' + fileName + '"  successful')
 
     def parseDirectoryIntoArray(self, lines, event=None):
         files = []
@@ -227,16 +238,19 @@ class MainFrame(wx.Frame):
 
     def ConnectFtp(self, toolbarPanel, url, user, passwd, event=None):
         self.ftp = ftplib.FTP(url)
+        self.TopLevelParent.consolePanel.LogMessage("Connecting to " + url)
         try:
             self.ftp.login(user, passwd)
-            wx.MessageBox(self.ftp.getwelcome(), "Connection Success", wx.ICON_INFORMATION)
+            self.TopLevelParent.consolePanel.LogMessage("Connection success!")
+            self.TopLevelParent.consolePanel.LogMessage(self.ftp.getwelcome())
             self.remoteDirPanel.updateDirectory(self)
             toolbarPanel.connectFtpBtn.Hide()
             toolbarPanel.abortConnBtn.Show()
             toolbarPanel.Layout()
         except ftplib.all_errors as e:
             error = str(e).split(None, 1)[0]
-            wx.MessageBox(error, "Connection Error", wx.ICON_EXCLAMATION)
+            self.TopLevelParent.consolePanel.LogMessage("Connection was unsuccesful")
+            self.TopLevelParent.consolePanel.LogMessage(error)
 
 def getFileItem(item):
     lastModified = str(parser.parse(item['modify']))
