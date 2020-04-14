@@ -5,6 +5,7 @@ import time
 from myvars import *
 from dateutil import parser
 import wx
+from wx import adv
 from wx import dataview
 
 class ToolbarPanel(wx.Panel):
@@ -211,6 +212,25 @@ class RemoteDirPanel(wx.Panel):
     def clearView(self, event=None):
         self.remoteDirs.DeleteAllItems()
 
+class FileMenu(wx.Menu):
+    def __init__(self, parentFrame):
+        super().__init__()
+        self.parentFrame = parentFrame
+        self.Bind(wx.EVT_MENU, self.onMenuItemClick)
+        newItem = wx.MenuItem(parentMenu=self, id=wx.ID_NEW, text="About")
+        self.Append(newItem)
+
+    def onMenuItemClick(self, event=None):
+        aboutModal = wx.adv.AboutDialogInfo()
+        aboutModal.SetName("FTP Client")
+        aboutModal.SetVersion("0.1")
+        aboutModal.SetCopyright("(C) 2020")
+        aboutModal.SetDescription("File Transfer Protocol client on top of wxPython")
+        aboutModal.SetWebSite("https://jaakkouusitalo.fi")
+        aboutModal.SetLicence("MIT")
+        aboutModal.AddDeveloper("Jaakko Uusitalo")
+        wx.adv.AboutBox(aboutModal)
+
 class MainFrame(wx.Frame):
     # TODO Add status bar for frame to show connectivity information
     # TODO Add settings menu
@@ -222,6 +242,10 @@ class MainFrame(wx.Frame):
         # TODO Add ability to change and save starting folder for later use
         self.SetLocalDirPath(sp.GetDocumentsDir())
         self.CreateUI()
+        menuBar = wx.MenuBar()
+        fileMenu = FileMenu(parentFrame=self)
+        menuBar.Append(fileMenu, "&File")
+        self.SetMenuBar(menuBar)
 
     def SetLocalDirPath(self, path):
         self.localDirPath = path
