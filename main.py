@@ -119,7 +119,8 @@ class LocalDirPanel(wx.Panel):
             self.TopLevelParent.consolePanel.LogMessage('Starting upload of ' + fileName)
             fileToSave = open(localDirPath + "\\" + fileName, 'rb')
             self.TopLevelParent.ftp.storbinary('STOR %s' % fileName, fileToSave)
-            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + fileSize + ' bytes')
+            fileToSave.close()
+            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(fileSize) + ' bytes')
         else:
             if fileName == "..":
                 currentPathList = localDirPath.split("\\")
@@ -170,7 +171,8 @@ class RemoteDirPanel(wx.Panel):
             pathToSave = open(currentPath, 'wb')
             self.TopLevelParent.consolePanel.LogMessage('Starting download of ' + fileName)
             self.TopLevelParent.ftp.retrbinary('RETR %s' % fileName, pathToSave.write)
-            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + fileSize + ' bytes')
+            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(fileSize) + ' bytes')
+            pathToSave.close()
         else:
             self.TopLevelParent.ftp.cwd(currentPath + fileName)
             self.TopLevelParent.consolePanel.LogMessage('Retrieving directory listing of "/' + fileName + '"...')
