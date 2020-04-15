@@ -84,10 +84,10 @@ class LocalDirPanel(wx.Panel):
         box = wx.BoxSizer(wx.VERTICAL)
         self.localDirs = wx.dataview.DataViewListCtrl(self)
         self.localDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
-        self.localDirs.AppendTextColumn('File')
-        self.localDirs.AppendTextColumn('Filesize')
-        self.localDirs.AppendTextColumn('Filetype')
-        self.localDirs.AppendTextColumn('Last modified')
+        self.localDirs.AppendTextColumn(label='File', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.localDirs.AppendTextColumn(label='Filesize', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.localDirs.AppendTextColumn(label='Filetype', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.localDirs.AppendTextColumn(label='Last modified', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
         itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
         self.updateDirectory(itemsInDir)
         box.Add(self.localDirs, 1, wx.EXPAND)
@@ -101,7 +101,7 @@ class LocalDirPanel(wx.Panel):
             if os.path.isdir(entryPath):
                 iType = "File folder"
             elif os.path.isfile(entryPath):
-                iType = "file"
+                iType = "File"
             lastModified = time.strftime('%d-%m-%Y %H:%M:%S', time.gmtime(os.path.getmtime(entryPath)))
             iSize = os.path.getsize(entryPath)
             items.append((entry, iSize, iType, lastModified))
@@ -150,12 +150,12 @@ class RemoteDirPanel(wx.Panel):
         box = wx.BoxSizer(wx.VERTICAL)
         self.remoteDirs = wx.dataview.DataViewListCtrl(self)
         self.remoteDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
-        self.remoteDirs.AppendTextColumn('File')
-        self.remoteDirs.AppendTextColumn('Filesize')
-        self.remoteDirs.AppendTextColumn('Filetype')
-        self.remoteDirs.AppendTextColumn('Last modified')
-        self.remoteDirs.AppendTextColumn('Permissions')
-        self.remoteDirs.AppendTextColumn('Owner/Group')
+        self.remoteDirs.AppendTextColumn(label='File', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendTextColumn(label='Filesize', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendTextColumn(label='Filetype', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendTextColumn(label='Last modified', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendTextColumn(label='Permissions', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendTextColumn(label='Owner/Group', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
         box.Add(self.remoteDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
