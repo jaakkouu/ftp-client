@@ -83,11 +83,12 @@ class LocalDirPanel(wx.Panel):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
         self.localDirs = wx.dataview.DataViewListCtrl(self)
+        flags = wx.dataview.DATAVIEW_COL_RESIZABLE|wx.dataview.DATAVIEW_COL_SORTABLE
         self.localDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
-        self.localDirs.AppendTextColumn(label='File', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.localDirs.AppendTextColumn(label='Filesize', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.localDirs.AppendTextColumn(label='Filetype', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.localDirs.AppendTextColumn(label='Last modified', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.localDirs.AppendIconTextColumn(label='File', flags=flags)
+        self.localDirs.AppendTextColumn(label='Filesize', flags=flags)
+        self.localDirs.AppendTextColumn(label='Filetype', flags=flags)
+        self.localDirs.AppendTextColumn(label='Last modified', flags=flags)
         itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
         self.updateDirectory(itemsInDir)
         box.Add(self.localDirs, 1, wx.EXPAND)
@@ -95,23 +96,28 @@ class LocalDirPanel(wx.Panel):
 
     def getItemsFromDir(self, dirPath, event=None):
         # TODO Add file and folder validation
-        items = []
+        backIcon = wx.Icon("back.ico")
+        fileIcon = wx.Icon("file.ico")
+        folderIcon = wx.Icon("folder.ico")
+        items = [(wx.dataview.DataViewIconText(text="..", icon=backIcon), "", "", "", "")]
         for entry in os.listdir(dirPath):
             entryPath = os.path.join(dirPath, entry)
             if os.path.isdir(entryPath):
+                icon = folderIcon
                 iType = "File folder"
             elif os.path.isfile(entryPath):
+                icon = fileIcon
                 iType = "File"
             lastModified = time.strftime('%d-%m-%Y %H:%M:%S', time.gmtime(os.path.getmtime(entryPath)))
             iSize = os.path.getsize(entryPath)
-            items.append((entry, iSize, iType, lastModified))
+            items.append((wx.dataview.DataViewIconText(text=entry, icon=icon), iSize, iType, lastModified))
         return items
 
     def onItemClick(self, event):
         # TODO Add file and folder validation
         selectedRowIndex = self.localDirs.GetSelectedRow()
         selectedItem = self.localDirs.RowToItem(selectedRowIndex)
-        fileName = self.localDirs.GetValue(selectedRowIndex, 0)
+        fileName = self.localDirs.GetValue(selectedRowIndex, 0).GetText()
         fileSize = self.localDirs.GetValue(selectedRowIndex, 1)
         fileType = self.localDirs.GetValue(selectedRowIndex, 2)
         localDirPath = self.localDirs.TopLevelParent.localDirPath
@@ -137,7 +143,6 @@ class LocalDirPanel(wx.Panel):
 
     def updateDirectory(self, items, event=None):
         self.clearView()
-        self.localDirs.AppendItem(("..", "", "", ""))
         for item in items:
             self.localDirs.AppendItem(item)
     
@@ -149,13 +154,14 @@ class RemoteDirPanel(wx.Panel):
         super().__init__(parent)
         box = wx.BoxSizer(wx.VERTICAL)
         self.remoteDirs = wx.dataview.DataViewListCtrl(self)
+        flags = wx.dataview.DATAVIEW_COL_RESIZABLE|wx.dataview.DATAVIEW_COL_SORTABLE
         self.remoteDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
-        self.remoteDirs.AppendTextColumn(label='File', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.remoteDirs.AppendTextColumn(label='Filesize', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.remoteDirs.AppendTextColumn(label='Filetype', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.remoteDirs.AppendTextColumn(label='Last modified', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.remoteDirs.AppendTextColumn(label='Permissions', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
-        self.remoteDirs.AppendTextColumn(label='Owner/Group', flags=wx.dataview.DATAVIEW_COL_SORTABLE)
+        self.remoteDirs.AppendIconTextColumn(label='File', flags=flags)
+        self.remoteDirs.AppendTextColumn(label='Filesize', flags=flags)
+        self.remoteDirs.AppendTextColumn(label='Filetype', flags=flags)
+        self.remoteDirs.AppendTextColumn(label='Last modified', flags=flags)
+        self.remoteDirs.AppendTextColumn(label='Permissions', flags=flags)
+        self.remoteDirs.AppendTextColumn(label='Owner/Group', flags=flags)
         box.Add(self.remoteDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
@@ -163,7 +169,7 @@ class RemoteDirPanel(wx.Panel):
         # TODO Add file and folder validation
         selectedRowIndex = self.remoteDirs.GetSelectedRow()
         selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
-        fileName = self.remoteDirs.GetValue(selectedRowIndex, 0)
+        fileName = self.remoteDirs.GetValue(selectedRowIndex, 0).GetText()
         fileSize = self.remoteDirs.GetValue(selectedRowIndex, 1)
         fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
         currentPath = self.TopLevelParent.ftp.pwd() + "/"
@@ -241,6 +247,7 @@ class MainFrame(wx.Frame):
         self.ftp = None
         # TODO Add ability to change and save starting folder for later use
         self.SetLocalDirPath(sp.GetDocumentsDir())
+        self.SetRemoteDirPath("")
         self.CreateUI()
         menuBar = wx.MenuBar()
         fileMenu = FileMenu(parentFrame=self)
@@ -289,7 +296,7 @@ class MainFrame(wx.Frame):
 def getFileItem(item):
     lastModified = str(parser.parse(item['modify']))
     return (
-        item['name'],
+        wx.dataview.DataViewIconText(text=item['name'], icon=wx.Icon('file.ico')),
         item['size'],
         item['type'],
         lastModified,
@@ -299,8 +306,9 @@ def getFileItem(item):
 
 def getFolderItem(item):
     lastModified = str(parser.parse(item['modify']))
+    icon = wx.Icon('back.ico') if item['name'] == '..' else wx.Icon('folder.ico')
     return (
-        item['name'],
+        wx.dataview.DataViewIconText(text=item['name'], icon=icon),
         item['sizd'],
         item['type'],
         lastModified,
