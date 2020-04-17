@@ -89,8 +89,7 @@ class LocalDirPanel(wx.Panel):
         self.localDirs.AppendTextColumn(label='Filesize', flags=flags)
         self.localDirs.AppendTextColumn(label='Filetype', flags=flags)
         self.localDirs.AppendTextColumn(label='Last modified', flags=flags)
-        itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
-        self.updateDirectory(itemsInDir)
+        self.updateDirectory()
         box.Add(self.localDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
@@ -113,36 +112,41 @@ class LocalDirPanel(wx.Panel):
             items.append((wx.dataview.DataViewIconText(text=entry, icon=icon), iSize, iType, lastModified))
         return items
 
+    def uploadFile(self, item, event=None):
+        remoteDirPath = self.localDirs.TopLevelParent.remoteDirPath
+        self.TopLevelParent.consolePanel.LogMessage('Starting upload of ' + item['name'])
+        fileToSave = open(self.localDirPath + "\\" + item['name'], 'rb')
+        self.TopLevelParent.ftp.storbinary('STOR %s' % item['name'], fileToSave)
+        fileToSave.close()
+        self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(item['size']) + ' bytes')
+        self.TopLevelParent.remoteDirPanel.updateDirectory()
+
     def onItemClick(self, event):
         # TODO Add file and folder validation
         selectedRowIndex = self.localDirs.GetSelectedRow()
         selectedItem = self.localDirs.RowToItem(selectedRowIndex)
-        fileName = self.localDirs.GetValue(selectedRowIndex, 0).GetText()
-        fileSize = self.localDirs.GetValue(selectedRowIndex, 1)
-        fileType = self.localDirs.GetValue(selectedRowIndex, 2)
-        localDirPath = self.localDirs.TopLevelParent.localDirPath
-        remoteDirPath = self.localDirs.TopLevelParent.remoteDirPath
-        if fileType == "file":
-            self.TopLevelParent.consolePanel.LogMessage('Starting upload of ' + fileName)
-            fileToSave = open(localDirPath + "\\" + fileName, 'rb')
-            self.TopLevelParent.ftp.storbinary('STOR %s' % fileName, fileToSave)
-            fileToSave.close()
-            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(fileSize) + ' bytes')
+        self.localDirPath = self.localDirs.TopLevelParent.localDirPath
+        item = {
+            'name': self.localDirs.GetValue(selectedRowIndex, 0).GetText(),
+            'size': self.localDirs.GetValue(selectedRowIndex, 1),
+            'type': self.localDirs.GetValue(selectedRowIndex, 2)
+        }
+        if item['type'] == "File":
+            self.uploadFile(item)
         else:
-            if fileName == "..":
-                currentPathList = localDirPath.split("\\")
+            if item['name'] == "..":
+                currentPathList = self.localDirPath.split("\\")
                 del currentPathList[-1]
                 separator = "\\"
                 currentPath = separator.join(currentPathList)
             else:
-                currentPath = localDirPath + "\\" + fileName
-
+                currentPath = self.localDirPath + "\\" + item['name']
             self.localDirs.TopLevelParent.SetLocalDirPath(currentPath)
-            itemsInDir = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
-            self.updateDirectory(itemsInDir)
+        self.updateDirectory()
 
-    def updateDirectory(self, items, event=None):
+    def updateDirectory(self, event=None):
         self.clearView()
+        items = self.getItemsFromDir(self.localDirs.TopLevelParent.localDirPath)
         for item in items:
             self.localDirs.AppendItem(item)
     
@@ -165,26 +169,32 @@ class RemoteDirPanel(wx.Panel):
         box.Add(self.remoteDirs, 1, wx.EXPAND)
         self.SetSizer(box)
 
+    def DownloadItem(self, item, event=None):
+        currentPath = self.remoteDirs.TopLevelParent.localDirPath + "\\" + item['name']
+        pathToSave = open(currentPath, 'wb')
+        self.TopLevelParent.consolePanel.LogMessage('Starting download of ' + item['name'])
+        self.TopLevelParent.ftp.retrbinary('RETR %s' % item['name'], pathToSave.write)
+        self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(item['size']) + ' bytes')
+        pathToSave.close()
+        self.TopLevelParent.localDirPanel.updateDirectory()
+
     def onItemClick(self, event):
         # TODO Add file and folder validation
         selectedRowIndex = self.remoteDirs.GetSelectedRow()
         selectedItem = self.remoteDirs.RowToItem(selectedRowIndex)
-        fileName = self.remoteDirs.GetValue(selectedRowIndex, 0).GetText()
-        fileSize = self.remoteDirs.GetValue(selectedRowIndex, 1)
-        fileType = self.remoteDirs.GetValue(selectedRowIndex, 2)
+        item = {
+            'name': self.remoteDirs.GetValue(selectedRowIndex, 0).GetText(),
+            'size': self.remoteDirs.GetValue(selectedRowIndex, 1),
+            'type': self.remoteDirs.GetValue(selectedRowIndex, 2)
+        }
         currentPath = self.TopLevelParent.ftp.pwd() + "/"
-        if fileType == "file":
-            currentPath = self.remoteDirs.TopLevelParent.localDirPath + "\\" + fileName
-            pathToSave = open(currentPath, 'wb')
-            self.TopLevelParent.consolePanel.LogMessage('Starting download of ' + fileName)
-            self.TopLevelParent.ftp.retrbinary('RETR %s' % fileName, pathToSave.write)
-            self.TopLevelParent.consolePanel.LogMessage('File transfer successful, transferred ' + str(fileSize) + ' bytes')
-            pathToSave.close()
+        if item['type'] == "File":
+            self.DownloadItem(item)
         else:
-            self.TopLevelParent.ftp.cwd(currentPath + fileName)
-            self.TopLevelParent.consolePanel.LogMessage('Retrieving directory listing of "/' + fileName + '"...')
+            self.TopLevelParent.ftp.cwd(currentPath + item['name'])
+            self.TopLevelParent.consolePanel.LogMessage('Retrieving directory listing of "/' + item['name'] + '"...')
             self.updateDirectory(self)
-            self.TopLevelParent.consolePanel.LogMessage('Directory listing of "/' + fileName + '"  successful')
+            self.TopLevelParent.consolePanel.LogMessage('Directory listing of "/' + item['name'] + '" successful')
 
     def parseDirectoryIntoArray(self, lines, event=None):
         files = []
@@ -298,7 +308,7 @@ def getFileItem(item):
     return (
         wx.dataview.DataViewIconText(text=item['name'], icon=wx.Icon('file.ico')),
         item['size'],
-        item['type'],
+        'File',
         lastModified,
         item['UNIX.mode'],
         item['UNIX.uid'] + " " + item['UNIX.gid']
@@ -310,7 +320,7 @@ def getFolderItem(item):
     return (
         wx.dataview.DataViewIconText(text=item['name'], icon=icon),
         item['sizd'],
-        item['type'],
+        'File Folder',
         lastModified,
         item['UNIX.mode'],
         item['UNIX.uid'] + " " + item['UNIX.gid']
