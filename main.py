@@ -95,9 +95,9 @@ class LocalDirPanel(wx.Panel):
 
     def getItemsFromDir(self, dirPath, event=None):
         # TODO Add file and folder validation
-        backIcon = wx.Icon("back.ico")
-        fileIcon = wx.Icon("file.ico")
-        folderIcon = wx.Icon("folder.ico")
+        backIcon = wx.Icon("icons/back.ico")
+        fileIcon = wx.Icon("icons/file.ico")
+        folderIcon = wx.Icon("icons/folder.ico")
         items = [(wx.dataview.DataViewIconText(text="..", icon=backIcon), "", "", "", "")]
         for entry in os.listdir(dirPath):
             entryPath = os.path.join(dirPath, entry)
@@ -312,7 +312,7 @@ class MainFrame(wx.Frame):
 def getFileItem(item):
     lastModified = str(parser.parse(item['modify']))
     return (
-        wx.dataview.DataViewIconText(text=item['name'], icon=wx.Icon('file.ico')),
+        wx.dataview.DataViewIconText(text=item['name'], icon=wx.Icon('icons/file.ico')),
         item['size'],
         'File',
         lastModified,
@@ -322,7 +322,7 @@ def getFileItem(item):
 
 def getFolderItem(item):
     lastModified = str(parser.parse(item['modify']))
-    icon = wx.Icon('back.ico') if item['name'] == '..' else wx.Icon('folder.ico')
+    icon = wx.Icon('icons/back.ico') if item['name'] == '..' else wx.Icon('icons/folder.ico')
     return (
         wx.dataview.DataViewIconText(text=item['name'], icon=icon),
         item['sizd'],
