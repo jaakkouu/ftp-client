@@ -81,7 +81,7 @@ class ConsolePanel(wx.Panel):
 class LocalDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
-        box = wx.BoxSizer(wx.VERTICAL)
+        box = wx.BoxSizer()
         self.localDirs = wx.dataview.DataViewListCtrl(self)
         flags = wx.dataview.DATAVIEW_COL_RESIZABLE|wx.dataview.DATAVIEW_COL_SORTABLE
         self.localDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
@@ -156,7 +156,7 @@ class LocalDirPanel(wx.Panel):
 class RemoteDirPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
-        box = wx.BoxSizer(wx.VERTICAL)
+        box = wx.BoxSizer()
         self.remoteDirs = wx.dataview.DataViewListCtrl(self)
         flags = wx.dataview.DATAVIEW_COL_RESIZABLE|wx.dataview.DATAVIEW_COL_SORTABLE
         self.remoteDirs.Bind(wx.dataview.EVT_DATAVIEW_ITEM_ACTIVATED, self.onItemClick)
@@ -273,18 +273,24 @@ class MainFrame(wx.Frame):
     def CreateUI(self):
         panel = wx.Panel(self)
         panel.SetBackgroundColour('#ffffff')
+        splitterWindow = wx.SplitterWindow(panel, wx.ID_ANY, style=wx.SP_LIVE_UPDATE)
+        self.localDirPanel = LocalDirPanel(splitterWindow)
+        self.remoteDirPanel = RemoteDirPanel(splitterWindow)
+        dirs = wx.BoxSizer()
+        splitterWindow.SplitVertically(self.localDirPanel, self.remoteDirPanel)
+        splitterWindow.SetSashGravity(0.5)
+        splitterWindow.Bind(wx.EVT_SPLITTER_DCLICK, self.splitterWindowDoubleClickEvent)
+        dirs.Add(splitterWindow, 2, wx.EXPAND)
         rows = wx.BoxSizer(wx.VERTICAL)
-        dirs = wx.BoxSizer(wx.HORIZONTAL)
         self.toolbarPanel = ToolbarPanel(panel)
         self.consolePanel = ConsolePanel(panel)
-        self.localDirPanel = LocalDirPanel(panel)
-        self.remoteDirPanel = RemoteDirPanel(panel)
         rows.Add(self.toolbarPanel, 0, wx.EXPAND)
         rows.Add(self.consolePanel, 0, wx.EXPAND)
-        dirs.Add(self.localDirPanel, 1, wx.EXPAND)
-        dirs.Add(self.remoteDirPanel, 1, wx.EXPAND) 
         rows.Add(dirs, 1, wx.EXPAND)
         panel.SetSizer(rows)
+
+    def splitterWindowDoubleClickEvent(self, event):
+        event.Veto()
 
     def ConnectFtp(self, toolbarPanel, url, user, passwd, event=None):
         self.ftp = ftplib.FTP(url)
